@@ -2,7 +2,7 @@ package game;
 
 import javax.swing.JFrame;
 
-import config.ui.Window;
+import config.panel.Window;
 
 /**
  * 
