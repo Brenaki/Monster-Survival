@@ -22,13 +22,13 @@ import java.util.List;
  * @author bnk
  */
 public class Window extends JPanel implements KeyListener, Runnable {
-    private Player player;
-    private List<Enemy> enemies;
-    private SpawnManager spawnManager;
+    private final Player player;
+    private final List<Enemy> enemies;
+    private final SpawnManager spawnManager;
     
     // Configurações de spawn
-    private int maxEnemies = 8;
-    private int spawnInterval = 2000; // 2 segundos
+    private final int maxEnemies = 8;
+    private final int spawnInterval = 2000; // 2 segundos
 
     public Window() {
         player = new Player(250, 250, 3, 8, 8, 10, true);
@@ -40,7 +40,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
         
         spawnManager = new SpawnManager(spawnX, spawnY, spawnInterval, maxEnemies);
 
-        setPreferredSize(new Dimension(500,500));
+        setPreferredSize(new Dimension(800,600));
 
         setFocusable(true);
         addKeyListener(this);
@@ -62,7 +62,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
         player.paint(g2d);
         
         // Desenha todos os inimigos
-        for (Enemy enemy : enemies) {
+        for (Enemy enemy : this.enemies) {
             enemy.paint(g2d);
         }
 
@@ -77,12 +77,13 @@ public class Window extends JPanel implements KeyListener, Runnable {
         if (this.player.getMoveRight()) this.player.setX(this.player.getX() + this.player.getSpeed());
         
         // Verifica se deve spawnar um novo inimigo
-        if (spawnManager.shouldSpawn(enemies.size())) {
+        if (spawnManager.shouldSpawn(this.enemies.size())) {
             spawnEnemy();
         }
         
         // Atualiza todos os inimigos
         updateEnemies();
+        resolvePlayerEnemyCollisions();
         
         // Remove inimigos mortos ou fora da tela
         removeDeadEnemies();
@@ -90,7 +91,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
     
     private void spawnEnemy() {
         int[] spawnPos = spawnManager.getRandomSpawnPosition(
-            player.getX(), player.getY(), 
+            this.player.getX(), this.player.getY(), 
             getWidth(), getHeight()
         );
         
@@ -100,13 +101,13 @@ public class Window extends JPanel implements KeyListener, Runnable {
         );
         
         enemies.add(newEnemy);
-        System.out.println("Inimigo spawnado! Total: " + enemies.size());
+        System.out.println("Inimigo spawnado! Total: " + this.enemies.size());
     }
     
     private void updateEnemies() {
         // Primeiro, atualiza o movimento dos inimigos
-        for (Enemy enemy : enemies) {
-            enemy.followPlayer(player.getX(), player.getY());
+        for (Enemy enemy : this.enemies) {
+            enemy.followPlayer(this.player.getX(), this.player.getY());
         }
         
         // Depois, resolve colisões entre inimigos
@@ -115,10 +116,10 @@ public class Window extends JPanel implements KeyListener, Runnable {
     
     private void resolveEnemyCollisions() {
         // Verifica colisão entre todos os pares de inimigos
-        for (int i = 0; i < enemies.size(); i++) {
-            for (int j = i + 1; j < enemies.size(); j++) {
-                Enemy enemy1 = enemies.get(i);
-                Enemy enemy2 = enemies.get(j);
+        for (int i = 0; i < this.enemies.size(); i++) {
+            for (int j = i + 1; j < this.enemies.size(); j++) {
+                Enemy enemy1 = this.enemies.get(i);
+                Enemy enemy2 = this.enemies.get(j);
                 
                 // Se estão colidindo, separa eles
                 if (enemy1.isCollidingWith(enemy2)) {
@@ -129,7 +130,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
     }
 
     private void removeDeadEnemies() {
-        Iterator<Enemy> iterator = enemies.iterator();
+        Iterator<Enemy> iterator = this.enemies.iterator();
         while (iterator.hasNext()) {
             Enemy enemy = iterator.next();
             
@@ -137,53 +138,60 @@ public class Window extends JPanel implements KeyListener, Runnable {
             if (enemy.getX() < -50 || enemy.getX() > getWidth() + 50 ||
                 enemy.getY() < -50 || enemy.getY() > getHeight() + 50) {
                 iterator.remove();
-                System.out.println("Inimigo removido (fora da tela). Total: " + enemies.size());
+                System.out.println("Inimigo removido (fora da tela). Total: " + this.enemies.size());
             }
-            // Aqui você pode adicionar outras condições de remoção
-            // como inimigos mortos, etc.
         }
     }
 
     public int getEnemyCount() {
         return enemies.size();
     }
-    
-        
-        @Override
-        public void run(){
-            while (true) {            
-                update();
-                repaint();
-                
-                try {
-                    Thread.sleep(16);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+
+    private void resolvePlayerEnemyCollisions() {
+        // Verifica colisão entre player e inimigo
+        for (Enemy enemy : this.enemies) {
+            if (this.player.isCollidingWith(enemy)) {
+                this.player.resolveCollision(enemy);
             }
         }
-        
-        @Override
-        public void keyPressed(KeyEvent e) {
-            int key = e.getKeyCode();
-            
-            if(key == KeyEvent.VK_UP || key == KeyEvent.VK_W) this.player.setMoveUp(true);
-            if(key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) this.player.setMoveDown(true);
-            if(key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) this.player.setMoveLeft(true);
-            if(key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) this.player.setMoveRight(true);
+    }
     
-        }
         
-        @Override
-        public void keyReleased(KeyEvent e) {
-            int key = e.getKeyCode();
+    @Override
+    public void run(){
+        while (true) {            
+            update();
+            repaint();
             
-            if(key == KeyEvent.VK_UP || key == KeyEvent.VK_W || key == KeyEvent.VK_NUMPAD8) this.player.setMoveUp(false);
-            if(key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S || key == KeyEvent.VK_NUMPAD2) this.player.setMoveDown(false);
-            if(key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A || key == KeyEvent.VK_NUMPAD4) this.player.setMoveLeft(false);
-            if(key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D || key == KeyEvent.VK_NUMPAD6) this.player.setMoveRight(false);
+            try {
+                Thread.sleep(16);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
+    }
+    
+    @Override
+    public void keyPressed(KeyEvent e) {
+        int key = e.getKeyCode();
         
-        @Override
-        public void keyTyped(KeyEvent e) {}
+        if(key == KeyEvent.VK_UP || key == KeyEvent.VK_W) this.player.setMoveUp(true);
+        if(key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) this.player.setMoveDown(true);
+        if(key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) this.player.setMoveLeft(true);
+        if(key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) this.player.setMoveRight(true);
+
+    }
+    
+    @Override
+    public void keyReleased(KeyEvent e) {
+        int key = e.getKeyCode();
+        
+        if(key == KeyEvent.VK_UP || key == KeyEvent.VK_W || key == KeyEvent.VK_NUMPAD8) this.player.setMoveUp(false);
+        if(key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S || key == KeyEvent.VK_NUMPAD2) this.player.setMoveDown(false);
+        if(key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A || key == KeyEvent.VK_NUMPAD4) this.player.setMoveLeft(false);
+        if(key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D || key == KeyEvent.VK_NUMPAD6) this.player.setMoveRight(false);
+    }
+    
+    @Override
+    public void keyTyped(KeyEvent e) {}
 }
