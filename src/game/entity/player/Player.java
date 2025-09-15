@@ -16,7 +16,7 @@ public class Player extends Entity {
 
     
     public Player(int x, int y, int speed, int width, int height, int health, boolean isVisible) {
-        super(x, y, speed, width, height, health, isVisible);
+        super(x, y, speed, width, height, health, isVisible, 25, 25);
     }
 
     public void paint(Graphics2D g2d) {
