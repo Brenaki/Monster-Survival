@@ -3,6 +3,7 @@ package game.entity.enemy;
 import java.awt.Color;
 import java.awt.Graphics2D;
 
+import config.combat.CombatManager;
 import game.entity.base.Entity;
 
 /**
@@ -12,9 +13,20 @@ import game.entity.base.Entity;
 public class Enemy extends Entity {
     private double directionX;
     private double directionY;
+    private CombatManager combat;
 
-    public Enemy(double x, double y, double speed, int width, int height, int health, boolean isVisible) {
+    public Enemy(double x,
+            double y,
+            double speed,
+            int width,
+            int height,
+            int health,
+            boolean isVisible,
+            int damage,
+            float range,
+            long cooldown) {
         super(x, y, speed, width, height, health, isVisible, 22, 22);
+        this.combat = new CombatManager(damage,range, cooldown);
     }
 
     public void paint(Graphics2D g2d) {
@@ -45,6 +57,7 @@ public class Enemy extends Entity {
     // -- Getters --
     public double getDirectionX() { return directionX; }
     public double getDirectionY() { return directionY; }
+    public CombatManager getCombat() { return combat; }
 
     // -- Setters --
     public void setDirectionX(double directionX) { this.directionX = directionX; }
