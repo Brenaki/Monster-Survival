@@ -15,13 +15,6 @@ public class Colission2D {
         this.rangeY = rangeY;
     }
 
-    public boolean rangeMin() {
-        if (this.x > this.rangeX && this.y > this.rangeY) {
-            return true;
-        }
-        return false;
-    }
-
     // -- Getters --
     public double getX() { return x; }
     public double getY() { return y; }
