@@ -2,14 +2,16 @@ package config.panel;
 
 import javax.swing.JPanel;
 
-import config.combat.CombatManager;
 import config.combat.Projectile;
 import config.spawn.SpawnManager;
 import game.entity.enemy.Enemy;
 import game.entity.player.Player;
+import game.entity.pickup.ExperienceGem;
+import game.entity.weapons.Weapon;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -28,21 +30,28 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private final List<Enemy> enemies;
     private final SpawnManager spawnManager;
     private final List<Projectile> projectiles;
-    private final CombatManager playerCombat;
+    private final List<ExperienceGem> experienceGems;
 
     // Configurações de spawn
-    private final int maxEnemies = 8;
-    private final int spawnInterval = 2000; // 2 segundos
+    private int maxEnemies = 8;
+    private int spawnInterval = 2000; // 2 segundos
 
-    // Tempo
+    // Tempo de jogo
     private long lastTimeNano;
     private double deltaTime;
+    private long gameStartTime;
+    private long gameDuration = 300000; // 5 minutos (300 segundos)
+    
+    // Game over
+    private String gameOverText = "Game Over";
+    private String messageGameOverText = "";
+    private boolean gameOver = false;
 
     public Window() {
         this.player = new Player(250, 250, 3, 8, 8, 100, true);
         this.enemies = new ArrayList<>();
         this.projectiles = new ArrayList<>();
-        playerCombat = new CombatManager(1000); // 1 segundo de Cooldown
+        this.experienceGems = new ArrayList<>();
 
         // Configura pontos de spawn nas bordas da tela
         int[] spawnX = { 0, 500, 0, 500 }; // Cantos da tela
@@ -56,6 +65,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
         addKeyListener(this);
 
         lastTimeNano = System.nanoTime();
+        gameStartTime = System.currentTimeMillis();
         new Thread(this).start();
     }
 
@@ -82,10 +92,92 @@ public class Window extends JPanel implements KeyListener, Runnable {
             projectile.render(g2d);
         }
 
+        // Desenha gems de experiência
+        for (ExperienceGem gem : this.experienceGems) {
+            gem.paint(g2d);
+        }
+
+        // Desenha informações do jogo
+        drawGameInfo(g2d);
+
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     }
 
+    private void drawGameInfo(Graphics2D g2d) {
+        g2d.setColor(Color.WHITE);
+        
+        // Tempo restante
+        long timeRemaining = gameDuration - (System.currentTimeMillis() - gameStartTime);
+        int secondsRemaining = (int) (timeRemaining / 1000);
+        g2d.drawString("Tempo: " + secondsRemaining + "s", 10, 20);
+        
+        // Inimigos na tela
+        g2d.drawString("Inimigos: " + enemies.size(), 10, 40);
+        
+        // Gems na tela
+        g2d.drawString("Gems: " + experienceGems.size(), 10, 60);
+        
+        // Desenha XP (necessaria para proximo nivel) e o Level do player
+        g2d.drawString("XP: " + this.player.getExperience() + "/" + this.player.getExperienceToNextLevel(), 10, 80);
+        g2d.drawString("Level: " + this.player.getLevel(), 10, 100);
+
+        // Desenha instruções
+        drawInstructions(g2d);
+
+        // Game Over
+        if (gameOver) {
+            // Pinta a tela de preto
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+
+            // Define fonte maior para o Game Over
+            Font gameOverFont = new Font("Arial", Font.BOLD, 48);
+            g2d.setFont(gameOverFont);
+            
+            // Calcula o centro da tela para o texto "GAME OVER"
+            int gameOverWidth = g2d.getFontMetrics().stringWidth(this.gameOverText);
+            int gameOverX = (getWidth() - gameOverWidth) / 2;
+            
+            // Desenha o Game Over em Vermelho
+            g2d.setColor(Color.RED);
+            g2d.drawString(this.gameOverText, gameOverX, getHeight()/2);
+
+            // Define fonte menor para o texto abaixo
+            Font messageFont = new Font("Arial", Font.PLAIN, 24);
+            g2d.setFont(messageFont);
+            
+            // Calcula o centro da tela para o texto de sobrevivência
+            int messageWidth = g2d.getFontMetrics().stringWidth(this.messageGameOverText);
+            int messageX = (getWidth() - messageWidth) / 2;
+            
+            // Desenha o texto a baixo
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(this.messageGameOverText, messageX, getHeight()/2 + 50);
+        }
+    }
+    
+    private void drawInstructions(Graphics2D g2d) {
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("WASD ou Setas para mover", 10, getHeight() - 40);
+        g2d.drawString("Sobreviva até o amanhecer!", 10, getHeight() - 20);
+    }
+
+    private void gameOver(String why){
+        if (this.gameOver) {
+            return; // Já está em game over
+        }
+        this.gameOver = true;
+        this.messageGameOverText = why;
+    }
+
     private void update() {
+        if (this.gameOver) return;
+        
+        // Verifica se o tempo acabou
+        if (System.currentTimeMillis() - gameStartTime >= gameDuration) {
+            this.gameOver("Sobreviveu até o amanhecer!");
+            return;
+        }
 		// Atualiza direção de olhar conforme entrada atual
 		double ldx = 0, ldy = 0;
 		if (this.player.getMoveUp()) ldy -= 1;
@@ -104,9 +196,17 @@ public class Window extends JPanel implements KeyListener, Runnable {
 		if (this.player.getMoveRight())
 			this.player.setX(this.player.getX() + this.player.getSpeed());
 
-		// Atualiza posição da arma
-		this.player.updateWeaponPosition();
+        // Game over, se o player morrer
+        if(this.player.isAlive() == false) {
+            this.gameOver("Você morreu!");
+        }
+        
+		// Atualiza posição das armas
+		this.player.updateWeaponPositions();
 
+		// Atualiza dificuldade baseada no tempo
+		updateDifficulty();
+		
 		// Verifica se deve spawnar um novo inimigo
 		if (spawnManager.shouldSpawn(this.enemies.size())) {
 			spawnEnemy();
@@ -116,26 +216,33 @@ public class Window extends JPanel implements KeyListener, Runnable {
 		updateEnemies();
 		resolvePlayerEnemyCollisions();
 
-		// Tiro automático do player a cada 1s na última direção olhada
+		// Tiro automático das armas do player
 		autoShoot();
 
 		// Atualiza projéteis
 		updateProjectiles(this.deltaTime);
+
+		// Atualiza gems de experiência
+		updateExperienceGems();
 
 		// Remove inimigos mortos ou fora da tela
 		removeDeadEnemies();
 	}
 
 	private void autoShoot() {
-		if (!playerCombat.shouldDamage()) return;
+		// Para cada arma do player, verifica se pode atirar
+		for (Weapon weapon : player.getWeapons()) {
+			if (weapon.canAttack()) {
+				double dirX = this.player.getLookDirX();
+				double dirY = this.player.getLookDirY();
+				if (dirX == 0 && dirY == 0) { dirX = 1.0; dirY = 0.0; }
 
-		double dirX = this.player.getLookDirX();
-		double dirY = this.player.getLookDirY();
-		if (dirX == 0 && dirY == 0) { dirX = 1.0; dirY = 0.0; }
-
-		// Dispara da arma ao invés do player
-		Projectile p = playerCombat.shootMagic(this.player.getActiveWeapon(), dirX, dirY);
-		projectiles.add(p);
+				// Cria projétil específico da arma
+				Projectile p = weapon.createProjectile(dirX, dirY);
+				projectiles.add(p);
+				weapon.attack(); // Marca que a arma atirou
+			}
+		}
 	}
 
 	private void updateProjectiles(double dt) {
@@ -152,6 +259,10 @@ public class Window extends JPanel implements KeyListener, Runnable {
 				if (e.getTeam() == p.getTeam()) continue;
 				if (p.onHit(e)) {
 					hit = true;
+					// Se o inimigo morreu, gera gem de experiência
+					if (e.getHealth() <= 0) {
+						spawnExperienceGem(e.getX(), e.getY());
+					}
 					break;
 				}
 			}
@@ -173,17 +284,86 @@ public class Window extends JPanel implements KeyListener, Runnable {
 		}
 	}
 
+	private void updateExperienceGems() {
+		Iterator<ExperienceGem> it = experienceGems.iterator();
+		while (it.hasNext()) {
+			ExperienceGem gem = it.next();
+			
+			// Remove gems expiradas
+			if (gem.isExpired()) {
+				it.remove();
+				continue;
+			}
+			
+			// Verifica colisão com o player
+			if (player.isCollidingWith(gem)) {
+				player.addExperience(gem.getExperienceValue());
+				it.remove();
+			}
+		}
+	}
+	
+	private void spawnExperienceGem(double x, double y) {
+		// Gera valor de XP baseado no nível do player
+		int xpValue = 10 + (player.getLevel() * 2);
+		ExperienceGem gem = new ExperienceGem(x, y, xpValue);
+		experienceGems.add(gem);
+	}
+	
+	private void updateDifficulty() {
+		long timeElapsed = System.currentTimeMillis() - gameStartTime;
+		int minutesElapsed = (int) (timeElapsed / 60000); // minutos
+		
+		// Aumenta número máximo de inimigos a cada minuto
+		maxEnemies = 8 + (minutesElapsed * 2);
+		
+		// Diminui intervalo de spawn a cada minuto
+		spawnInterval = Math.max(500, 2000 - (minutesElapsed * 200));
+		
+		// Atualiza o spawn manager
+		spawnManager.setMaxMonsters(maxEnemies);
+		spawnManager.setSpawnInterval(spawnInterval);
+	}
+
     private void spawnEnemy() {
         int[] spawnPos = spawnManager.getRandomSpawnPosition(
                 this.player.getX(), this.player.getY(),
                 getWidth(), getHeight());
 
-        Enemy newEnemy = new Enemy(
-                spawnPos[0], spawnPos[1],
-                1.12, 8, 8, 100, true, 1000);
+        // Escolhe tipo de inimigo baseado no nível do player
+        String enemyType = chooseEnemyType();
+        Enemy newEnemy = createEnemyByType(spawnPos[0], spawnPos[1], enemyType);
 
         this.enemies.add(newEnemy);
-        System.out.println("Inimigo spawnado! Total: " + this.enemies.size());
+        System.out.println("Inimigo " + enemyType + " spawnado! Total: " + this.enemies.size());
+    }
+    
+    private String chooseEnemyType() {
+        int playerLevel = player.getLevel();
+        double rand = Math.random();
+        
+        if (playerLevel >= 10 && rand < 0.1) {
+            return "Boss";
+        } else if (playerLevel >= 5 && rand < 0.3) {
+            return "Tank";
+        } else if (rand < 0.4) {
+            return "Fast";
+        } else {
+            return "Normal";
+        }
+    }
+    
+    private Enemy createEnemyByType(int x, int y, String type) {
+        switch (type) {
+            case "Fast":
+                return new Enemy(x, y, 2.5, 6, 6, 50, true, 500, "Fast");
+            case "Tank":
+                return new Enemy(x, y, 0.8, 12, 12, 200, true, 1000, "Tank");
+            case "Boss":
+                return new Enemy(x, y, 1.2, 16, 16, 500, true, 1500, "Boss");
+            default: // Normal
+                return new Enemy(x, y, 1.12, 8, 8, 100, true, 800, "Normal");
+        }
     }
 
     private void updateEnemies() {
@@ -238,8 +418,10 @@ public class Window extends JPanel implements KeyListener, Runnable {
         for (Enemy enemy : this.enemies) {
             if (this.player.isCollidingWith(enemy)) {
                 this.player.resolveCollision(enemy);
-                if (this.player.getHealth() > 0 && enemy.getCombat().shouldDamage()) {
-                    this.player.setHealth(player.getHealth() - 1);
+                // Dano corpo a corpo - inimigo causa dano direto no player
+                if (this.player.getHealth() > 0 && enemy.canDamage()) {
+                    this.player.setHealth(player.getHealth() - 1    ); // 5 de dano por contato
+                    enemy.dealDamage(); // Marca que o inimigo causou dano
                 }
             }
         }
