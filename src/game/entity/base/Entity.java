@@ -59,16 +59,13 @@ public class Entity {
         this.colission.setrangeX(rangeX);
         this.colission.setrangeY(rangeY);
     }
-    public boolean checkRangeMin() {
-        return this.colission.rangeMin();
-    }
     
     public boolean isCollidingWith(Entity other) {
         double distance = Math.sqrt(
             Math.pow(this.getX() - other.getX(), 2) + 
             Math.pow(this.getY() - other.getY(), 2)
         );
-        return distance < (this.getColission().getrangeX() + other.getColission().getrangeX());
+        return distance < (this.getColission().getrangeX() + other.getColission().getrangeX()) && distance < (this.getColission().getrangeY() + other.getColission().getrangeY());
     }
     
     public void resolveCollision(Entity other) {

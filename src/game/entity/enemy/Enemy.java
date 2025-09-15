@@ -14,7 +14,7 @@ public class Enemy extends Entity {
     private double directionY;
 
     public Enemy(double x, double y, double speed, int width, int height, int health, boolean isVisible) {
-        super(x, y, speed, width, height, health, isVisible, 25, 25);
+        super(x, y, speed, width, height, health, isVisible, 22, 22);
     }
 
     public void paint(Graphics2D g2d) {
