@@ -1,5 +1,8 @@
 package game.entity.base;
 
+import java.awt.Graphics2D;
+import java.awt.geom.GeneralPath;
+
 import config.colission.Colission2D;
 
 /**
@@ -66,6 +69,16 @@ public class Entity {
             Math.pow(this.getY() - other.getY(), 2)
         );
         return distance < (this.getColission().getrangeX() + other.getColission().getrangeX()) && distance < (this.getColission().getrangeY() + other.getColission().getrangeY());
+    }
+
+    public void paint(Graphics2D g2d) {
+        GeneralPath gp = new GeneralPath();
+        if (this.getHealth() > 0) {
+            g2d.drawString(String.valueOf(this.getHealth()) + "%", (int)this.getX(), (int)this.getY()-15);
+            gp.moveTo(this.getX(), this.getY()-10);
+            gp.lineTo(this.getX()+(getHealth()/2.5), this.getY()-10);
+        }
+        g2d.draw(gp);
     }
     
     public void resolveCollision(Entity other) {

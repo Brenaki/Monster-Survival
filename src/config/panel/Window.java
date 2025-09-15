@@ -31,7 +31,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private final int spawnInterval = 2000; // 2 segundos
 
     public Window() {
-        player = new Player(250, 250, 3, 8, 8, 10, true);
+        player = new Player(250, 250, 3, 8, 8, 100, true);
         enemies = new ArrayList<>();
         
         // Configura pontos de spawn nas bordas da tela
@@ -97,10 +97,10 @@ public class Window extends JPanel implements KeyListener, Runnable {
         
         Enemy newEnemy = new Enemy(
             spawnPos[0], spawnPos[1], 
-            1.12, 8, 8, 10, true
+            1.12, 8, 8, 100, true
         );
         
-        enemies.add(newEnemy);
+        this.enemies.add(newEnemy);
         System.out.println("Inimigo spawnado! Total: " + this.enemies.size());
     }
     
@@ -152,6 +152,9 @@ public class Window extends JPanel implements KeyListener, Runnable {
         for (Enemy enemy : this.enemies) {
             if (this.player.isCollidingWith(enemy)) {
                 this.player.resolveCollision(enemy);
+                if (this.player.getHealth() > 0) {
+                    this.player.setHealth(player.getHealth()-1);
+                }
             }
         }
     }
