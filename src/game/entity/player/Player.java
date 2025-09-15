@@ -2,11 +2,15 @@ package game.entity.player;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.util.ArrayList;
+import java.util.List;
 
 import config.combat.Shooter;
 import config.combat.Team;
 import game.entity.base.Entity;
 import game.entity.weapons.Weapon;
+import game.entity.weapons.BasicGun;
+import game.upgrade.UpgradeSystem;
 
 /**
  * 
@@ -20,11 +24,18 @@ public class Player extends Entity implements Shooter {
 	private Team team = Team.PLAYER;
 	private double lookDirX = 1.0;
 	private double lookDirY = 0.0;
-	private Weapon activeWeapon;
+	private List<Weapon> weapons;
+	private int level = 1;
+	private int experience = 0;
+	private int experienceToNextLevel = 100;
+	private UpgradeSystem upgradeSystem;
 	
 	public Player(int x, int y, int speed, int width, int height, int health, boolean isVisible) {
 		super(x, y, speed, width, height, health, isVisible, 22, 22);
-		this.activeWeapon = new Weapon(x, y, Team.PLAYER, this);
+		this.weapons = new ArrayList<>();
+		this.upgradeSystem = new UpgradeSystem();
+		// Começa com uma arma básica
+		this.weapons.add(new BasicGun(x, y, Team.PLAYER, this));
 	}
 
 	public void paint(Graphics2D g2d) {
@@ -33,9 +44,10 @@ public class Player extends Entity implements Shooter {
 		
 		super.paint(g2d);
 		
-		// Desenha a arma
-		g2d.setColor(Color.GRAY);
-		g2d.fillRect((int) activeWeapon.getX() - 5, (int) activeWeapon.getY() - 5, 10, 10);
+		// Desenha as armas
+		for (Weapon weapon : weapons) {
+			weapon.render(g2d);
+		}
 	}
 
 	public void setLookDir(double dx, double dy) {
@@ -45,8 +57,42 @@ public class Player extends Entity implements Shooter {
 		this.lookDirY = dy / len;
 	}
 	
-	public void updateWeaponPosition() {
-		activeWeapon.updatePosition(this.getX(), this.getY(), lookDirX, lookDirY);
+	public void updateWeaponPositions() {
+		for (Weapon weapon : weapons) {
+			weapon.updatePosition(this.getX(), this.getY(), lookDirX, lookDirY);
+		}
+	}
+	
+	public void addExperience(int xp) {
+		this.experience += xp;
+		if (this.experience >= experienceToNextLevel) {
+			levelUp();
+		}
+	}
+	
+	private void levelUp() {
+		this.level++;
+		this.experience -= experienceToNextLevel;
+		this.experienceToNextLevel = (int) (experienceToNextLevel * 1.2); // Aumenta exponencialmente
+		
+		// Aplica upgrade automático baseado no nível
+		applyAutomaticUpgrade();
+		
+		System.out.println("Level Up! Novo nível: " + level);
+	}
+	
+	private void applyAutomaticUpgrade() {
+		// A cada nível, aplica um upgrade aleatório
+		List<String> upgrades = upgradeSystem.getRandomUpgrades(1);
+		if (!upgrades.isEmpty()) {
+			String upgrade = upgrades.get(0);
+			upgradeSystem.applyUpgrade(upgrade, this);
+			System.out.println("Upgrade aplicado: " + upgrade);
+		}
+	}
+
+	public boolean isAlive() {
+		return this.getHealth() > 0;
 	}
 	
     // -- Getters --
@@ -57,7 +103,10 @@ public class Player extends Entity implements Shooter {
 	public Team getTeam() { return this.team; }
 	public double getLookDirX() { return this.lookDirX; }
 	public double getLookDirY() { return this.lookDirY; }
-	public Weapon getActiveWeapon() { return this.activeWeapon; }
+	public List<Weapon> getWeapons() { return this.weapons; }
+	public int getLevel() { return this.level; }
+	public int getExperience() { return this.experience; }
+	public int getExperienceToNextLevel() { return this.experienceToNextLevel; }
 
 	// -- Setters --
 	public void setMoveUp(boolean moveUp) { this.moveUp = moveUp; }

@@ -3,7 +3,6 @@ package game.entity.enemy;
 import java.awt.Color;
 import java.awt.Graphics2D;
 
-import config.combat.CombatManager;
 import config.combat.Team;
 import game.entity.base.Entity;
 
@@ -14,8 +13,12 @@ import game.entity.base.Entity;
 public class Enemy extends Entity {
     private double directionX;
     private double directionY;
-    private CombatManager combat;
     private Team team = Team.ENEMY;
+    private String enemyType;
+    private int baseHealth;
+    private double baseSpeed;
+    private long lastDamageTime;
+    private long damageCooldown = 500; // 0,5 segundo entre danos
 
     public Enemy(double x,
             double y,
@@ -24,13 +27,32 @@ public class Enemy extends Entity {
             int height,
             int health,
             boolean isVisible,
-            long cooldown) {
+            long cooldown,
+            String enemyType) {
         super(x, y, speed, width, height, health, isVisible, 22, 22);
-        this.combat = new CombatManager(cooldown);
+        this.damageCooldown = cooldown;
+        this.enemyType = enemyType;
+        this.baseHealth = health;
+        this.baseSpeed = speed;
+        this.lastDamageTime = System.currentTimeMillis();
     }
 
     public void paint(Graphics2D g2d) {
-        g2d.setColor(Color.BLUE);
+        // Cor baseada no tipo de inimigo
+        switch (enemyType) {
+            case "Fast":
+                g2d.setColor(Color.CYAN);
+                break;
+            case "Tank":
+                g2d.setColor(Color.RED);
+                break;
+            case "Boss":
+                g2d.setColor(Color.MAGENTA);
+                break;
+            default:
+                g2d.setColor(Color.BLUE);
+                break;
+        }
         g2d.fillRect((int) this.getX(), (int) this.getY(), 40, 40);
         super.paint(g2d);
     }
@@ -54,11 +76,22 @@ public class Enemy extends Entity {
         }
     }
 
+    public boolean canDamage() {
+        long currentTime = System.currentTimeMillis();
+        return (currentTime - lastDamageTime) >= damageCooldown;
+    }
+    
+    public void dealDamage() {
+        this.lastDamageTime = System.currentTimeMillis();
+    }
+
     // -- Getters --
     public double getDirectionX() { return this.directionX; }
     public double getDirectionY() { return this.directionY; }
-    public CombatManager getCombat() { return this.combat; }
     public Team getTeam() { return this.team; }
+    public String getEnemyType() { return this.enemyType; }
+    public int getBaseHealth() { return this.baseHealth; }
+    public double getBaseSpeed() { return this.baseSpeed; }
 
     // -- Setters --
     public void setDirectionX(double directionX) { this.directionX = directionX; }
