@@ -2,6 +2,8 @@ package config.panel;
 
 import javax.swing.JPanel;
 
+import config.combat.CombatManager;
+import config.combat.Projectile;
 import config.spawn.SpawnManager;
 import game.entity.enemy.Enemy;
 import game.entity.player.Player;
@@ -25,14 +27,22 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private final Player player;
     private final List<Enemy> enemies;
     private final SpawnManager spawnManager;
+    private final List<Projectile> projectiles;
+    private final CombatManager playerCombat;
 
     // Configurações de spawn
     private final int maxEnemies = 8;
     private final int spawnInterval = 2000; // 2 segundos
 
+    // Tempo
+    private long lastTimeNano;
+    private double deltaTime;
+
     public Window() {
-        player = new Player(250, 250, 3, 8, 8, 100, true);
-        enemies = new ArrayList<>();
+        this.player = new Player(250, 250, 3, 8, 8, 100, true);
+        this.enemies = new ArrayList<>();
+        this.projectiles = new ArrayList<>();
+        playerCombat = new CombatManager(1000); // 1 segundo de Cooldown
 
         // Configura pontos de spawn nas bordas da tela
         int[] spawnX = { 0, 500, 0, 500 }; // Cantos da tela
@@ -45,6 +55,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
         setFocusable(true);
         addKeyListener(this);
 
+        lastTimeNano = System.nanoTime();
         new Thread(this).start();
     }
 
@@ -66,32 +77,101 @@ public class Window extends JPanel implements KeyListener, Runnable {
             enemy.paint(g2d);
         }
 
+        // Desenha projéteis
+        for (Projectile projectile : this.projectiles) {
+            projectile.render(g2d);
+        }
+
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
     }
 
     private void update() {
-        // Atualiza movimento do player
-        if (this.player.getMoveUp())
-            this.player.setY(this.player.getY() - this.player.getSpeed());
-        if (this.player.getMoveDown())
-            this.player.setY(this.player.getY() + this.player.getSpeed());
-        if (this.player.getMoveLeft())
-            this.player.setX(this.player.getX() - this.player.getSpeed());
-        if (this.player.getMoveRight())
-            this.player.setX(this.player.getX() + this.player.getSpeed());
+		// Atualiza direção de olhar conforme entrada atual
+		double ldx = 0, ldy = 0;
+		if (this.player.getMoveUp()) ldy -= 1;
+		if (this.player.getMoveDown()) ldy += 1;
+		if (this.player.getMoveLeft()) ldx -= 1;
+		if (this.player.getMoveRight()) ldx += 1;
+		if (ldx != 0 || ldy != 0) this.player.setLookDir(ldx, ldy);
 
-        // Verifica se deve spawnar um novo inimigo
-        if (spawnManager.shouldSpawn(this.enemies.size())) {
-            spawnEnemy();
-        }
+		// Atualiza movimento do player
+		if (this.player.getMoveUp())
+			this.player.setY(this.player.getY() - this.player.getSpeed());
+		if (this.player.getMoveDown())
+			this.player.setY(this.player.getY() + this.player.getSpeed());
+		if (this.player.getMoveLeft())
+			this.player.setX(this.player.getX() - this.player.getSpeed());
+		if (this.player.getMoveRight())
+			this.player.setX(this.player.getX() + this.player.getSpeed());
 
-        // Atualiza todos os inimigos
-        updateEnemies();
-        resolvePlayerEnemyCollisions();
+		// Atualiza posição da arma
+		this.player.updateWeaponPosition();
 
-        // Remove inimigos mortos ou fora da tela
-        removeDeadEnemies();
-    }
+		// Verifica se deve spawnar um novo inimigo
+		if (spawnManager.shouldSpawn(this.enemies.size())) {
+			spawnEnemy();
+		}
+
+		// Atualiza todos os inimigos
+		updateEnemies();
+		resolvePlayerEnemyCollisions();
+
+		// Tiro automático do player a cada 1s na última direção olhada
+		autoShoot();
+
+		// Atualiza projéteis
+		updateProjectiles(this.deltaTime);
+
+		// Remove inimigos mortos ou fora da tela
+		removeDeadEnemies();
+	}
+
+	private void autoShoot() {
+		if (!playerCombat.shouldDamage()) return;
+
+		double dirX = this.player.getLookDirX();
+		double dirY = this.player.getLookDirY();
+		if (dirX == 0 && dirY == 0) { dirX = 1.0; dirY = 0.0; }
+
+		// Dispara da arma ao invés do player
+		Projectile p = playerCombat.shootMagic(this.player.getActiveWeapon(), dirX, dirY);
+		projectiles.add(p);
+	}
+
+	private void updateProjectiles(double dt) {
+		Iterator<Projectile> it = projectiles.iterator();
+		while (it.hasNext()) {
+			Projectile p = it.next();
+
+			// Movimento e distância
+			p.update(dt);
+
+			// Checa colisão com inimigos
+			boolean hit = false;
+			for (Enemy e : enemies) {
+				if (e.getTeam() == p.getTeam()) continue;
+				if (p.onHit(e)) {
+					hit = true;
+					break;
+				}
+			}
+			if (hit) {
+				it.remove();
+				continue;
+			}
+
+			// Remove se expirar por alcance
+			if (p.isExpired()) {
+				it.remove();
+				continue;
+			}
+
+			// Remove se sair da tela com margem
+			if (p.getX() < -50 || p.getX() > getWidth() + 50 || p.getY() < -50 || p.getY() > getHeight() + 50) {
+				it.remove();
+			}
+		}
+	}
 
     private void spawnEnemy() {
         int[] spawnPos = spawnManager.getRandomSpawnPosition(
@@ -100,7 +180,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
 
         Enemy newEnemy = new Enemy(
                 spawnPos[0], spawnPos[1],
-                1.12, 8, 8, 100, true, 5, 1, 1000);
+                1.12, 8, 8, 100, true, 1000);
 
         this.enemies.add(newEnemy);
         System.out.println("Inimigo spawnado! Total: " + this.enemies.size());
@@ -142,6 +222,10 @@ public class Window extends JPanel implements KeyListener, Runnable {
                 iterator.remove();
                 System.out.println("Inimigo removido (fora da tela). Total: " + this.enemies.size());
             }
+            if (enemy.getHealth() == 0) {
+                iterator.remove();
+                System.out.println("Inimigo removido (morto). Total: " + this.enemies.size());
+            }
         }
     }
 
@@ -164,6 +248,10 @@ public class Window extends JPanel implements KeyListener, Runnable {
     @Override
     public void run() {
         while (true) {
+            long now = System.nanoTime();
+            this.deltaTime = (now - this.lastTimeNano) / 1_000_000_000.0; // segundos
+            this.lastTimeNano = now;
+
             update();
             repaint();
 
