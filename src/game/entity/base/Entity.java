@@ -16,6 +16,7 @@ public class Entity {
     private int width;
     private int height;
     private int health;
+    private int initHealth;
     private boolean isVisible;
     private Colission2D colission;
 
@@ -26,6 +27,7 @@ public class Entity {
         this.width = width;
         this.height = height;
         this.health = health;
+        this.initHealth = health;
         this.isVisible = isVisible;
         this.colission = new Colission2D(rangeX, rangeY);
         this.colission.setX(x);
@@ -39,6 +41,7 @@ public class Entity {
     public int getWidth() { return this.width; }
     public int getHeight() { return this.height; }
     public int getHealth() { return this.health; }
+    public int getInitHealth() { return this.initHealth; }
     public boolean getIsVisible() { return this.isVisible; }
 
     // -- Setters --
@@ -54,6 +57,7 @@ public class Entity {
     public void setWidth(int width) { this.width = width; }
     public void setHeight(int height) { this.height = height; }
     public void setHealth(int health) { this.health = health; }
+    public void setInitHealth(int initHealth) { this.initHealth = initHealth; }
     public void setIsVisible(boolean isVisible) { this.isVisible = isVisible; }
     
     // -- Colision Methods --

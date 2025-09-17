@@ -46,20 +46,22 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private String gameOverText = "Game Over";
     private String messageGameOverText = "";
     private boolean gameOver = false;
-
+    private boolean restart = false;
+    
+    
     public Window() {
-        this.player = new Player(250, 250, 3, 8, 8, 100, true);
+        this.player = new Player(960, 540, 3, 8, 8, 10, true);
         this.enemies = new ArrayList<>();
         this.projectiles = new ArrayList<>();
         this.experienceGems = new ArrayList<>();
 
         // Configura pontos de spawn nas bordas da tela
-        int[] spawnX = { 0, 500, 0, 500 }; // Cantos da tela
-        int[] spawnY = { 0, 0, 500, 500 };
+        int[] spawnX = { 0, 1920, 0, 1920 }; // Cantos da tela
+        int[] spawnY = { 0, 0, 1080, 1080 };
 
         spawnManager = new SpawnManager(spawnX, spawnY, spawnInterval, maxEnemies);
 
-        setPreferredSize(new Dimension(800, 600));
+        setPreferredSize(new Dimension(1920, 1080));
 
         setFocusable(true);
         addKeyListener(this);
@@ -131,7 +133,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
             g2d.fillRect(0, 0, getWidth(), getHeight());
 
             // Define fonte maior para o Game Over
-            Font gameOverFont = new Font("Arial", Font.BOLD, 48);
+            Font gameOverFont = new Font("Arial", Font.BOLD, 96);
             g2d.setFont(gameOverFont);
             
             // Calcula o centro da tela para o texto "GAME OVER"
@@ -142,19 +144,47 @@ public class Window extends JPanel implements KeyListener, Runnable {
             g2d.setColor(Color.RED);
             g2d.drawString(this.gameOverText, gameOverX, getHeight()/2);
 
-            // Define fonte menor para o texto abaixo
-            Font messageFont = new Font("Arial", Font.PLAIN, 24);
+            // Define fonte menor para o texto
+            Font messageFont = new Font("Arial", Font.PLAIN, 32);
             g2d.setFont(messageFont);
             
             // Calcula o centro da tela para o texto de sobrevivência
             int messageWidth = g2d.getFontMetrics().stringWidth(this.messageGameOverText);
             int messageX = (getWidth() - messageWidth) / 2;
             
-            // Desenha o texto a baixo
+            // Desenha o texto a 
             g2d.setColor(Color.WHITE);
             g2d.drawString(this.messageGameOverText, messageX, getHeight()/2 + 50);
+            
+            
+            // Define fonte menor para o texto
+            Font restartFont = new Font("Arial", Font.PLAIN, 24);
+            g2d.setFont(restartFont);
+            
+            // Reinicia o Jogo
+            String textRestart = "Renicie o jogo usando a tecla 'R'";
+            int restartWidth = g2d.getFontMetrics().stringWidth(textRestart);
+            int restartX = (getWidth() - restartWidth) / 2;
+            
+            g2d.setColor(Color.WHITE);
+            g2d.drawString(textRestart, restartX, getHeight()/2 + 100);
+            if(this.restart) {
+               this.restart(); 
+            }
         }
     }
+    
+    public void restart() {
+        this.enemies.clear();
+        this.projectiles.clear();
+        this.experienceGems.clear();
+
+        this.player.reset();
+        this.gameOver = false;
+        this.restart = false;
+        this.gameStartTime = System.currentTimeMillis(); // reinicia o cronômetro
+    }
+
     
     private void drawInstructions(Graphics2D g2d) {
         g2d.setColor(Color.WHITE);
@@ -444,7 +474,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
             }
         }
     }
-
+    
     @Override
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
@@ -457,6 +487,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
             this.player.setMoveLeft(true);
         if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D)
             this.player.setMoveRight(true);
+        if(key == KeyEvent.VK_R) this.restart = true;
 
     }
 
@@ -472,6 +503,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
             this.player.setMoveLeft(false);
         if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D || key == KeyEvent.VK_NUMPAD6)
             this.player.setMoveRight(false);
+        if(key == KeyEvent.VK_R) this.restart = false;
     }
 
     @Override

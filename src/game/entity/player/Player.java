@@ -29,9 +29,15 @@ public class Player extends Entity implements Shooter {
 	private int experience = 0;
 	private int experienceToNextLevel = 100;
 	private UpgradeSystem upgradeSystem;
+        
+        // Init coords
+        private float initX;
+        private float initY;
 	
 	public Player(int x, int y, int speed, int width, int height, int health, boolean isVisible) {
 		super(x, y, speed, width, height, health, isVisible, 22, 22);
+                this.initX = x;
+                this.initY = y;
 		this.weapons = new ArrayList<>();
 		this.upgradeSystem = new UpgradeSystem();
 		// Começa com uma arma básica
@@ -49,6 +55,18 @@ public class Player extends Entity implements Shooter {
 			weapon.render(g2d);
 		}
 	}
+        
+        public void reset() {
+            this.setX(this.initX);
+            this.setY(this.initY);
+            this.setHealth(getInitHealth());
+            this.setExperience(0);
+            this.setLevel(1);
+            this.getWeapons().clear();
+            // Adicione a arma inicial se for o caso
+            this.weapons.add(new BasicGun(this.initX, this.initY, Team.PLAYER, this));
+        }
+
 
 	public void setLookDir(double dx, double dy) {
 		if (dx == 0 && dy == 0) return;
@@ -113,4 +131,6 @@ public class Player extends Entity implements Shooter {
 	public void setMoveDown(boolean moveDown) { this.moveDown = moveDown; }
 	public void setMoveLeft(boolean moveLeft) { this.moveLeft = moveLeft; }
 	public void setMoveRight(boolean moveRight) { this.moveRight = moveRight; }
+        public void setExperience(int experience) { this.experience = experience; }
+        public void setLevel(int level) { this.level = level; }
 }

@@ -14,7 +14,7 @@ import config.combat.Team;
 public class BasicGun extends Weapon {
     
     public BasicGun(double x, double y, Team team, Shooter owner) {
-        super(x, y, team, owner, "Pistola Básica", 1.0f, 15, 300f);
+        super(x, y, team, owner, "Pistola Básica", 3.0f, 15, 300f);
     }
     
     @Override
