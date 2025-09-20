@@ -4,6 +4,8 @@ import javax.swing.JPanel;
 
 import config.combat.Projectile;
 import config.spawn.SpawnManager;
+import config.graphics.PixelArtRenderer;
+import config.graphics.ParticleSystem;
 import game.entity.enemy.Enemy;
 import game.entity.player.Player;
 import game.entity.pickup.ExperienceGem;
@@ -14,7 +16,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.util.ArrayList;
@@ -31,6 +32,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private final SpawnManager spawnManager;
     private final List<Projectile> projectiles;
     private final List<ExperienceGem> experienceGems;
+    private final ParticleSystem particleSystem;
 
     // Configurações de spawn
     private int maxEnemies = 8;
@@ -42,18 +44,27 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private long gameStartTime;
     private long gameDuration = 300000; // 5 minutos (300 segundos)
     
+    // Sistema de pontuação
+    private int score = 0;
+    private int enemiesKilled = 0;
+    private int gemsCollected = 0;
+    
     // Game over
-    private String gameOverText = "Game Over";
+    private String gameOverText = "GAME OVER";
     private String messageGameOverText = "";
     private boolean gameOver = false;
     private boolean restart = false;
     
+    // Efeitos visuais
+    private double pulseTime = 0;
+    
     
     public Window() {
-        this.player = new Player(960, 540, 3, 8, 8, 10, true);
+        this.player = new Player(960, 540, 3, 8, 8, 100, true);
         this.enemies = new ArrayList<>();
         this.projectiles = new ArrayList<>();
         this.experienceGems = new ArrayList<>();
+        this.particleSystem = new ParticleSystem();
 
         // Configura pontos de spawn nas bordas da tela
         int[] spawnX = { 0, 1920, 0, 1920 }; // Cantos da tela
@@ -76,65 +87,113 @@ public class Window extends JPanel implements KeyListener, Runnable {
         super.paintComponent(g);
 
         Graphics2D g2d = (Graphics2D) g;
+        
+        // Configura renderização pixel-perfect para estilo 8-bit
+        PixelArtRenderer.setupPixelPerfect(g2d);
 
-        // -- Background --
-        g2d.setColor(Color.BLACK);
+        // -- Background 8-bit (corrige bug da tela branca) --
+        g2d.setColor(PixelArtRenderer.BACKGROUND);
         g2d.fillRect(0, 0, getWidth(), getHeight());
+        
+        // Desenha grid de fundo usando linhas
+        drawBackgroundGrid(g2d);
 
-        // Desenha o player
-        player.paint(g2d);
+        // Atualiza tempo do jogo para efeitos visuais
+        pulseTime += deltaTime * 3; // Velocidade do pulso
 
-        // Desenha todos os inimigos
+        // Desenha o player com rotação
+        double playerRotation = Math.atan2(player.getLookDirY(), player.getLookDirX());
+        PixelArtRenderer.drawPlayer(g2d, player.getX(), player.getY(), playerRotation);
+        
+        // Desenha barra de vida do player
+        PixelArtRenderer.drawHealthBar(g2d, player.getX(), player.getY() - 20, 
+            player.getHealth(), player.getInitHealth(), 64);
+
+        // Desenha todos os inimigos com escala baseada na distância
         for (Enemy enemy : this.enemies) {
-            enemy.paint(g2d);
+            double distance = Math.sqrt(Math.pow(enemy.getX() - player.getX(), 2) + Math.pow(enemy.getY() - player.getY(), 2));
+            double scale = Math.max(0.7, 1.0 - (distance / 1000.0)); // Efeito de profundidade
+            PixelArtRenderer.drawEnemy(g2d, enemy.getX(), enemy.getY(), enemy.getEnemyType(), scale);
+            
+            // Desenha barra de vida usando linhas
+            PixelArtRenderer.drawHealthBar(g2d, enemy.getX(), enemy.getY() - 15, 
+                enemy.getHealth(), enemy.getBaseHealth(), 40);
         }
 
-        // Desenha projéteis
+        // Desenha projéteis com rotação
         for (Projectile projectile : this.projectiles) {
-            projectile.render(g2d);
+            double projRotation = Math.atan2(projectile.getVy(), projectile.getVx());
+            PixelArtRenderer.drawProjectile(g2d, projectile.getX(), projectile.getY(), projRotation);
         }
 
-        // Desenha gems de experiência
+        // Desenha gems de experiência com efeito pulsante
         for (ExperienceGem gem : this.experienceGems) {
-            gem.paint(g2d);
+            double pulseScale = 1.0 + 0.2 * Math.sin(pulseTime);
+            PixelArtRenderer.drawExperienceGem(g2d, gem.getX(), gem.getY(), 
+                gem.getExperienceValue(), pulseScale);
         }
+        
+        // Renderiza sistema de partículas
+        particleSystem.render(g2d);
 
-        // Desenha informações do jogo
+        // Desenha informações do jogo com estilo 8-bit
         drawGameInfo(g2d);
-
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        
+        // Desenha barra de nível no topo da tela
+        PixelArtRenderer.drawLevelBar(g2d, player.getLevel(), player.getExperience(), 
+            player.getExperienceToNextLevel(), getWidth());
     }
 
+    /**
+     * Desenha grid de fundo usando linhas
+     */
+    private void drawBackgroundGrid(Graphics2D g2d) {
+        g2d.setColor(new Color(40, 40, 60)); // Cor mais escura para o grid
+        
+        // Linhas verticais
+        for (int x = 0; x < getWidth(); x += 40) {
+            g2d.drawLine(x, 0, x, getHeight());
+        }
+        
+        // Linhas horizontais
+        for (int y = 0; y < getHeight(); y += 40) {
+            g2d.drawLine(0, y, getWidth(), y);
+        }
+    }
     private void drawGameInfo(Graphics2D g2d) {
-        g2d.setColor(Color.WHITE);
+        // Configura fonte 8-bit
+        Font pixelFont = new Font("Courier New", Font.BOLD, 16);
+        Font largeFont = new Font("Courier New", Font.BOLD, 24);
+        g2d.setFont(pixelFont);
+        g2d.setColor(PixelArtRenderer.UI_TEXT);
         
         // Tempo restante
         long timeRemaining = gameDuration - (System.currentTimeMillis() - gameStartTime);
         int secondsRemaining = (int) (timeRemaining / 1000);
-        g2d.drawString("Tempo: " + secondsRemaining + "s", 10, 20);
+        g2d.drawString("TEMPO: " + secondsRemaining + "s", 20, 30);
         
-        // Inimigos na tela
-        g2d.drawString("Inimigos: " + enemies.size(), 10, 40);
+        // Pontuação
+        g2d.setColor(PixelArtRenderer.UI_ACCENT);
+        g2d.drawString("SCORE: " + score, 20, 50);
         
-        // Gems na tela
-        g2d.drawString("Gems: " + experienceGems.size(), 10, 60);
-        
-        // Desenha XP (necessaria para proximo nivel) e o Level do player
-        g2d.drawString("XP: " + this.player.getExperience() + "/" + this.player.getExperienceToNextLevel(), 10, 80);
-        g2d.drawString("Level: " + this.player.getLevel(), 10, 100);
+        // Estatísticas
+        g2d.setColor(PixelArtRenderer.UI_TEXT);
+        g2d.drawString("INIMIGOS: " + enemies.size(), 20, 70);
+        g2d.drawString("GEMS: " + experienceGems.size(), 20, 90);
+        g2d.drawString("MORTOS: " + enemiesKilled, 20, 110);
+        g2d.drawString("COLETADOS: " + gemsCollected, 20, 130);
 
         // Desenha instruções
         drawInstructions(g2d);
 
         // Game Over
         if (gameOver) {
-            // Pinta a tela de preto
-            g2d.setColor(Color.BLACK);
+            // Pinta a tela com efeito de fade
+            g2d.setColor(new Color(0, 0, 0, 180));
             g2d.fillRect(0, 0, getWidth(), getHeight());
 
             // Define fonte maior para o Game Over
-            Font gameOverFont = new Font("Arial", Font.BOLD, 96);
-            g2d.setFont(gameOverFont);
+            g2d.setFont(largeFont);
             
             // Calcula o centro da tela para o texto "GAME OVER"
             int gameOverWidth = g2d.getFontMetrics().stringWidth(this.gameOverText);
@@ -145,28 +204,33 @@ public class Window extends JPanel implements KeyListener, Runnable {
             g2d.drawString(this.gameOverText, gameOverX, getHeight()/2);
 
             // Define fonte menor para o texto
-            Font messageFont = new Font("Arial", Font.PLAIN, 32);
-            g2d.setFont(messageFont);
+            g2d.setFont(pixelFont);
             
             // Calcula o centro da tela para o texto de sobrevivência
             int messageWidth = g2d.getFontMetrics().stringWidth(this.messageGameOverText);
             int messageX = (getWidth() - messageWidth) / 2;
             
-            // Desenha o texto a 
-            g2d.setColor(Color.WHITE);
-            g2d.drawString(this.messageGameOverText, messageX, getHeight()/2 + 50);
+            // Desenha o texto
+            g2d.setColor(PixelArtRenderer.UI_TEXT);
+            g2d.drawString(this.messageGameOverText, messageX, getHeight()/2 + 40);
             
+            // Pontuação final
+            String finalScore = "PONTUAÇÃO FINAL: " + score;
+            int scoreWidth = g2d.getFontMetrics().stringWidth(finalScore);
+            int scoreX = (getWidth() - scoreWidth) / 2;
+            g2d.setColor(PixelArtRenderer.UI_ACCENT);
+            g2d.drawString(finalScore, scoreX, getHeight()/2 + 70);
             
-            // Define fonte menor para o texto
-            Font restartFont = new Font("Arial", Font.PLAIN, 24);
+            // Define fonte menor para o texto de reiniciar
+            Font restartFont = new Font("Courier New", Font.PLAIN, 14);
             g2d.setFont(restartFont);
             
             // Reinicia o Jogo
-            String textRestart = "Renicie o jogo usando a tecla 'R'";
+            String textRestart = "Pressione 'R' para reiniciar";
             int restartWidth = g2d.getFontMetrics().stringWidth(textRestart);
             int restartX = (getWidth() - restartWidth) / 2;
             
-            g2d.setColor(Color.WHITE);
+            g2d.setColor(PixelArtRenderer.UI_TEXT);
             g2d.drawString(textRestart, restartX, getHeight()/2 + 100);
             if(this.restart) {
                this.restart(); 
@@ -178,18 +242,25 @@ public class Window extends JPanel implements KeyListener, Runnable {
         this.enemies.clear();
         this.projectiles.clear();
         this.experienceGems.clear();
+        this.particleSystem.clear();
 
         this.player.reset();
         this.gameOver = false;
         this.restart = false;
         this.gameStartTime = System.currentTimeMillis(); // reinicia o cronômetro
+        
+        // Reset do sistema de pontuação
+        this.score = 0;
+        this.enemiesKilled = 0;
+        this.gemsCollected = 0;
+        this.pulseTime = 0;
     }
 
     
     private void drawInstructions(Graphics2D g2d) {
-        g2d.setColor(Color.WHITE);
-        g2d.drawString("WASD ou Setas para mover", 10, getHeight() - 40);
-        g2d.drawString("Sobreviva até o amanhecer!", 10, getHeight() - 20);
+        g2d.setColor(PixelArtRenderer.UI_TEXT);
+        g2d.drawString("WASD ou Setas para mover", 20, getHeight() - 40);
+        g2d.drawString("Sobreviva até o amanhecer!", 20, getHeight() - 20);
     }
 
     private void gameOver(String why){
@@ -203,7 +274,10 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private void update() {
         if (this.gameOver) return;
         
-        // Verifica se o tempo acabou
+        // Atualiza sistema de partículas
+        particleSystem.update(deltaTime);
+        
+        // Verifica se o tempo acabou (corrige bug do tempo não parar)
         if (System.currentTimeMillis() - gameStartTime >= gameDuration) {
             this.gameOver("Sobreviveu até o amanhecer!");
             return;
@@ -289,9 +363,14 @@ public class Window extends JPanel implements KeyListener, Runnable {
 				if (e.getTeam() == p.getTeam()) continue;
 				if (p.onHit(e)) {
 					hit = true;
-					// Se o inimigo morreu, gera gem de experiência
+					// Se o inimigo morreu, gera gem de experiência e efeitos
 					if (e.getHealth() <= 0) {
 						spawnExperienceGem(e.getX(), e.getY());
+						// Adiciona efeito de explosão
+						particleSystem.addExplosion(e.getX(), e.getY(), 8);
+						// Atualiza pontuação
+						enemiesKilled++;
+						score += getEnemyScore(e.getEnemyType());
 					}
 					break;
 				}
@@ -328,6 +407,11 @@ public class Window extends JPanel implements KeyListener, Runnable {
 			// Verifica colisão com o player
 			if (player.isCollidingWith(gem)) {
 				player.addExperience(gem.getExperienceValue());
+				// Adiciona efeito de coleta
+				particleSystem.addXPCollection(gem.getX(), gem.getY());
+				// Atualiza pontuação
+				gemsCollected++;
+				score += gem.getExperienceValue() * 2; // Pontos extras por coletar gems
 				it.remove();
 			}
 		}
@@ -341,6 +425,9 @@ public class Window extends JPanel implements KeyListener, Runnable {
 	}
 	
 	private void updateDifficulty() {
+		// Não atualiza dificuldade se o jogo acabou
+		if (this.gameOver) return;
+		
 		long timeElapsed = System.currentTimeMillis() - gameStartTime;
 		int minutesElapsed = (int) (timeElapsed / 60000); // minutos
 		
@@ -508,5 +595,17 @@ public class Window extends JPanel implements KeyListener, Runnable {
 
     @Override
     public void keyTyped(KeyEvent e) {
+    }
+    
+    /**
+     * Retorna pontuação baseada no tipo de inimigo
+     */
+    private int getEnemyScore(String enemyType) {
+        switch (enemyType) {
+            case "Fast": return 50;
+            case "Tank": return 100;
+            case "Boss": return 500;
+            default: return 25; // Normal
+        }
     }
 }

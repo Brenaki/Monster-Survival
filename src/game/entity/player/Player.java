@@ -1,6 +1,5 @@
 package game.entity.player;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -45,9 +44,6 @@ public class Player extends Entity implements Shooter {
 	}
 
 	public void paint(Graphics2D g2d) {
-		g2d.setColor(Color.RED);
-		g2d.fillRect((int) this.getX(), (int) this.getY(), 40, 40);
-		
 		super.paint(g2d);
 		
 		// Desenha as armas

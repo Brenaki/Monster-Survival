@@ -1,6 +1,5 @@
 package game.entity.enemy;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
 
 import config.combat.Team;
@@ -38,22 +37,7 @@ public class Enemy extends Entity {
     }
 
     public void paint(Graphics2D g2d) {
-        // Cor baseada no tipo de inimigo
-        switch (enemyType) {
-            case "Fast":
-                g2d.setColor(Color.CYAN);
-                break;
-            case "Tank":
-                g2d.setColor(Color.RED);
-                break;
-            case "Boss":
-                g2d.setColor(Color.MAGENTA);
-                break;
-            default:
-                g2d.setColor(Color.BLUE);
-                break;
-        }
-        g2d.fillRect((int) this.getX(), (int) this.getY(), 40, 40);
+        // Mantém apenas a barra de vida aqui
         super.paint(g2d);
     }
 

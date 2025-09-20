@@ -1,6 +1,5 @@
 package game.entity.weapons;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
 
 import config.combat.Projectile;
@@ -17,7 +16,6 @@ public class Bullet extends Projectile {
 
     @Override
     public void render(Graphics2D g2d) {
-        g2d.setColor(Color.YELLOW);
-        g2d.fillRect((int) this.x, (int) this.y, 10, 10);
+        // Mantém apenas informações básicas aqui se necessário
     }
 }

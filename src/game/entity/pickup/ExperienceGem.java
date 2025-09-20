@@ -1,6 +1,5 @@
 package game.entity.pickup;
 
-import java.awt.Color;
 import java.awt.Graphics2D;
 
 import game.entity.base.Entity;
@@ -21,20 +20,7 @@ public class ExperienceGem extends Entity {
     }
     
     public void paint(Graphics2D g2d) {
-        // Desenha a gema com cor baseada no valor de XP
-        if (experienceValue >= 50) {
-            g2d.setColor(Color.PINK); // Gema rosa para XP alto
-        } else if (experienceValue >= 20) {
-            g2d.setColor(Color.CYAN); // Gema ciano para XP médio
-        } else {
-            g2d.setColor(Color.GREEN); // Gema verde para XP baixo
-        }
-        
-        g2d.fillOval((int) this.getX(), (int) this.getY(), this.getWidth(), this.getHeight());
-        
-        // Desenha um brilho ao redor
-        g2d.setColor(Color.WHITE);
-        g2d.drawOval((int) this.getX() - 1, (int) this.getY() - 1, this.getWidth() + 2, this.getHeight() + 2);
+        // Mantém apenas informações básicas aqui se necessário
     }
     
     public boolean isExpired() {
