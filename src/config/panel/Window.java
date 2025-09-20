@@ -6,6 +6,7 @@ import config.combat.Projectile;
 import config.spawn.SpawnManager;
 import config.graphics.PixelArtRenderer;
 import config.graphics.ParticleSystem;
+import config.graphics.SpriteManager;
 import game.entity.enemy.Enemy;
 import game.entity.player.Player;
 import game.entity.pickup.ExperienceGem;
@@ -55,11 +56,23 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private boolean gameOver = false;
     private boolean restart = false;
     
+    // Start screen
+    private boolean startScreen = true;
+    private String startScreenTitle = "MONSTER SURVIVAL";
+    private String startScreenSubtitle = "Sobreviva até o amanhecer!";
+    
+    // Loading screen
+    private boolean loadingScreen = false;
+    private String loadingText = "CARREGANDO...";
+    
     // Efeitos visuais
     private double pulseTime = 0;
     
     
     public Window() {
+        // Inicia na tela de carregamento
+        this.loadingScreen = true;
+        
         this.player = new Player(960, 540, 3, 8, 8, 100, true);
         this.enemies = new ArrayList<>();
         this.projectiles = new ArrayList<>();
@@ -78,7 +91,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
         addKeyListener(this);
 
         lastTimeNano = System.nanoTime();
-        gameStartTime = System.currentTimeMillis();
+        // gameStartTime será definido quando o jogador pressionar ENTER
         new Thread(this).start();
     }
 
@@ -186,6 +199,18 @@ public class Window extends JPanel implements KeyListener, Runnable {
         // Desenha instruções
         drawInstructions(g2d);
 
+        // Loading Screen
+        if (loadingScreen) {
+            drawLoadingScreen(g2d);
+            return;
+        }
+
+        // Start Screen
+        if (startScreen) {
+            drawStartScreen(g2d);
+            return;
+        }
+
         // Game Over
         if (gameOver) {
             // Pinta a tela com efeito de fade
@@ -247,7 +272,9 @@ public class Window extends JPanel implements KeyListener, Runnable {
         this.player.reset();
         this.gameOver = false;
         this.restart = false;
-        this.gameStartTime = System.currentTimeMillis(); // reinicia o cronômetro
+        this.loadingScreen = true; // Volta para a tela de carregamento
+        this.startScreen = true; // Depois vai para a tela inicial
+        // gameStartTime será definido quando o jogador pressionar ENTER
         
         // Reset do sistema de pontuação
         this.score = 0;
@@ -262,6 +289,130 @@ public class Window extends JPanel implements KeyListener, Runnable {
         g2d.drawString("WASD ou Setas para mover", 20, getHeight() - 40);
         g2d.drawString("Sobreviva até o amanhecer!", 20, getHeight() - 20);
     }
+    
+    private void drawStartScreen(Graphics2D g2d) {
+        // Configura fonte 8-bit
+        Font pixelFont = new Font("Courier New", Font.BOLD, 16);
+        Font largeFont = new Font("Courier New", Font.BOLD, 48);
+        Font mediumFont = new Font("Courier New", Font.BOLD, 24);
+        
+        // Pinta a tela com efeito de fade
+        g2d.setColor(new Color(0, 0, 0, 200));
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+        
+        // Define fonte grande para o título
+        g2d.setFont(largeFont);
+        
+        // Calcula o centro da tela para o título
+        int titleWidth = g2d.getFontMetrics().stringWidth(startScreenTitle);
+        int titleX = (getWidth() - titleWidth) / 2;
+        
+        // Desenha o título em laranja
+        g2d.setColor(new Color(255, 200, 100));
+        g2d.drawString(startScreenTitle, titleX, getHeight()/2 - 60);
+        
+        // Define fonte média para o subtítulo
+        g2d.setFont(mediumFont);
+        
+        // Calcula o centro da tela para o subtítulo
+        int subtitleWidth = g2d.getFontMetrics().stringWidth(startScreenSubtitle);
+        int subtitleX = (getWidth() - subtitleWidth) / 2;
+        
+        // Desenha o subtítulo
+        g2d.setColor(PixelArtRenderer.UI_TEXT);
+        g2d.drawString(startScreenSubtitle, subtitleX, getHeight()/2 - 10);
+        
+        // Define fonte menor para as instruções
+        g2d.setFont(pixelFont);
+        
+        // Instruções de controle
+        String instructions1 = "WASD ou Setas para mover";
+        String instructions2 = "Mouse para mirar e atirar";
+        String instructions3 = "Colete gemas para subir de nível";
+        
+        int inst1Width = g2d.getFontMetrics().stringWidth(instructions1);
+        int inst2Width = g2d.getFontMetrics().stringWidth(instructions2);
+        int inst3Width = g2d.getFontMetrics().stringWidth(instructions3);
+        
+        int inst1X = (getWidth() - inst1Width) / 2;
+        int inst2X = (getWidth() - inst2Width) / 2;
+        int inst3X = (getWidth() - inst3Width) / 2;
+        
+        g2d.setColor(PixelArtRenderer.UI_TEXT);
+        g2d.drawString(instructions1, inst1X, getHeight()/2 + 30);
+        g2d.drawString(instructions2, inst2X, getHeight()/2 + 50);
+        g2d.drawString(instructions3, inst3X, getHeight()/2 + 70);
+        
+        // Define fonte menor para o texto de iniciar
+        Font startFont = new Font("Courier New", Font.PLAIN, 14);
+        g2d.setFont(startFont);
+        
+        // Texto para iniciar o jogo
+        String startText = "Pressione ENTER para iniciar";
+        int startWidth = g2d.getFontMetrics().stringWidth(startText);
+        int startX = (getWidth() - startWidth) / 2;
+        
+        // Efeito pulsante para o texto de iniciar
+        double startPulse = 1.0 + 0.2 * Math.sin(pulseTime * 5);
+        g2d.setColor(new Color(255, 255, 255, (int)(180 * startPulse)));
+        g2d.drawString(startText, startX, getHeight()/2 + 120);
+    }
+    
+    private void drawLoadingScreen(Graphics2D g2d) {
+        // Configura fonte 8-bit
+        Font pixelFont = new Font("Courier New", Font.BOLD, 16);
+        Font largeFont = new Font("Courier New", Font.BOLD, 32);
+        
+        // Pinta a tela com fundo escuro
+        g2d.setColor(new Color(20, 20, 40));
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+        
+        // Define fonte grande para o texto de carregamento
+        g2d.setFont(largeFont);
+        
+        // Calcula o centro da tela para o texto
+        int loadingWidth = g2d.getFontMetrics().stringWidth(loadingText);
+        int loadingX = (getWidth() - loadingWidth) / 2;
+        
+        // Desenha o texto de carregamento
+        g2d.setColor(new Color(255, 200, 100));
+        g2d.drawString(loadingText, loadingX, getHeight()/2);
+        
+        // Define fonte menor para pontos de carregamento
+        g2d.setFont(pixelFont);
+        
+        // Desenha pontos animados
+        String dots = "";
+        int dotCount = (int)((pulseTime * 3) % 4);
+        for (int i = 0; i < dotCount; i++) {
+            dots += ".";
+        }
+        
+        int dotsWidth = g2d.getFontMetrics().stringWidth(dots);
+        int dotsX = (getWidth() - dotsWidth) / 2;
+        
+        g2d.setColor(PixelArtRenderer.UI_TEXT);
+        g2d.drawString(dots, dotsX, getHeight()/2 + 40);
+        
+        // Desenha barra de progresso simples
+        int barWidth = 300;
+        int barHeight = 20;
+        int barX = (getWidth() - barWidth) / 2;
+        int barY = getHeight()/2 + 80;
+        
+        // Fundo da barra
+        g2d.setColor(new Color(40, 40, 60));
+        g2d.fillRoundRect(barX, barY, barWidth, barHeight, 5, 5);
+        
+        // Borda da barra
+        g2d.setColor(Color.WHITE);
+        g2d.drawRoundRect(barX, barY, barWidth, barHeight, 5, 5);
+        
+        // Barra de progresso animada
+        int progressWidth = (int)((Math.sin(pulseTime * 2) + 1) * 0.5 * (barWidth - 4));
+        g2d.setColor(PixelArtRenderer.UI_ACCENT);
+        g2d.fillRoundRect(barX + 2, barY + 2, progressWidth, barHeight - 4, 3, 3);
+    }
 
     private void gameOver(String why){
         if (this.gameOver) {
@@ -272,6 +423,25 @@ public class Window extends JPanel implements KeyListener, Runnable {
     }
 
     private void update() {
+        // Atualiza efeito pulsante sempre
+        pulseTime += deltaTime;
+        
+        // Verifica se ainda está carregando sprites
+        SpriteManager spriteManager = SpriteManager.getInstance();
+        if (spriteManager.isLoading()) {
+            loadingScreen = true;
+            return;
+        } else if (loadingScreen) {
+            // Carregamento concluído, vai para tela inicial
+            loadingScreen = false;
+            return;
+        }
+        
+        if (this.startScreen) {
+            // Atualiza apenas o efeito pulsante na tela inicial
+            return;
+        }
+        
         if (this.gameOver) return;
         
         // Atualiza sistema de partículas
@@ -565,6 +735,13 @@ public class Window extends JPanel implements KeyListener, Runnable {
     @Override
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
+
+        // Controle da tela inicial
+        if (startScreen && key == KeyEvent.VK_ENTER) {
+            startScreen = false;
+            gameStartTime = System.currentTimeMillis(); // Inicia o cronômetro
+            return;
+        }
 
         if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W)
             this.player.setMoveUp(true);

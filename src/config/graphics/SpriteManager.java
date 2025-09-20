@@ -19,6 +19,7 @@ public class SpriteManager {
     
     private static SpriteManager instance;
     private Map<String, BufferedImage> sprites;
+    private boolean isLoading = true;
     
     private SpriteManager() {
         this.sprites = new HashMap<>();
@@ -61,6 +62,8 @@ public class SpriteManager {
         } catch (Exception e) {
             System.err.println("Erro ao carregar sprites: " + e.getMessage());
             System.err.println("Continuando com renderização pixel art...");
+        } finally {
+            isLoading = false; // Marca carregamento como concluído
         }
     }
     
@@ -232,5 +235,12 @@ public class SpriteManager {
                 sprite.getWidth() + "x" + sprite.getHeight() + " pixels");
         }
         System.out.println("=========================");
+    }
+    
+    /**
+     * Verifica se os sprites ainda estão sendo carregados
+     */
+    public boolean isLoading() {
+        return isLoading;
     }
 }
