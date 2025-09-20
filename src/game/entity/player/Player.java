@@ -10,6 +10,7 @@ import game.entity.base.Entity;
 import game.entity.weapons.Weapon;
 import game.entity.weapons.BasicGun;
 import game.upgrade.UpgradeSystem;
+import game.upgrade.UpgradeCardManager;
 
 /**
  * 
@@ -28,6 +29,7 @@ public class Player extends Entity implements Shooter {
 	private int experience = 0;
 	private int experienceToNextLevel = 100;
 	private UpgradeSystem upgradeSystem;
+	private UpgradeCardManager cardManager;
         
         // Init coords
         private float initX;
@@ -39,6 +41,7 @@ public class Player extends Entity implements Shooter {
                 this.initY = y;
 		this.weapons = new ArrayList<>();
 		this.upgradeSystem = new UpgradeSystem();
+		this.cardManager = new UpgradeCardManager();
 		// Começa com uma arma básica
 		this.weapons.add(new BasicGun(x, y, Team.PLAYER, this));
 	}
@@ -89,21 +92,13 @@ public class Player extends Entity implements Shooter {
 		this.experience -= experienceToNextLevel;
 		this.experienceToNextLevel = (int) (experienceToNextLevel * 1.2); // Aumenta exponencialmente
 		
-		// Aplica upgrade automático baseado no nível
-		applyAutomaticUpgrade();
+		// Ativa seleção de cartas em vez de upgrade automático
+		cardManager.activateCardSelection();
 		
 		System.out.println("Level Up! Novo nível: " + level);
+		System.out.println("Selecione uma carta de power-up!");
 	}
 	
-	private void applyAutomaticUpgrade() {
-		// A cada nível, aplica um upgrade aleatório
-		List<String> upgrades = upgradeSystem.getRandomUpgrades(1);
-		if (!upgrades.isEmpty()) {
-			String upgrade = upgrades.get(0);
-			upgradeSystem.applyUpgrade(upgrade, this);
-			System.out.println("Upgrade aplicado: " + upgrade);
-		}
-	}
 
 	public boolean isAlive() {
 		return this.getHealth() > 0;
@@ -121,12 +116,21 @@ public class Player extends Entity implements Shooter {
 	public int getLevel() { return this.level; }
 	public int getExperience() { return this.experience; }
 	public int getExperienceToNextLevel() { return this.experienceToNextLevel; }
+	public UpgradeCardManager getCardManager() { return this.cardManager; }
 
 	// -- Setters --
 	public void setMoveUp(boolean moveUp) { this.moveUp = moveUp; }
 	public void setMoveDown(boolean moveDown) { this.moveDown = moveDown; }
 	public void setMoveLeft(boolean moveLeft) { this.moveLeft = moveLeft; }
 	public void setMoveRight(boolean moveRight) { this.moveRight = moveRight; }
-        public void setExperience(int experience) { this.experience = experience; }
-        public void setLevel(int level) { this.level = level; }
+    public void setExperience(int experience) { this.experience = experience; }
+    public void setLevel(int level) { this.level = level; }
+        
+    /**
+     * Aplica um upgrade selecionado pelo jogador
+     */
+    public void applySelectedUpgrade(String upgradeName) {
+        upgradeSystem.applyUpgrade(upgradeName, this);
+        System.out.println("Upgrade aplicado: " + upgradeName);
+    }
 }

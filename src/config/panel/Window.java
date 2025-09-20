@@ -155,6 +155,11 @@ public class Window extends JPanel implements KeyListener, Runnable {
         // Desenha barra de nível no topo da tela
         PixelArtRenderer.drawLevelBar(g2d, player.getLevel(), player.getExperience(), 
             player.getExperienceToNextLevel(), getWidth());
+            
+        // Renderiza interface de cartas se ativa
+        if (player.getCardManager().isActive()) {
+            player.getCardManager().render(g2d, getWidth(), getHeight());
+        }
     }
 
     /**
@@ -443,6 +448,13 @@ public class Window extends JPanel implements KeyListener, Runnable {
         }
         
         if (this.gameOver) return;
+        
+        // Pausa o jogo se a seleção de cartas estiver ativa
+        if (player.getCardManager().isActive()) {
+            // Atualiza apenas efeitos visuais durante a pausa
+            particleSystem.update(deltaTime);
+            return;
+        }
         
         // Atualiza sistema de partículas
         particleSystem.update(deltaTime);
@@ -736,6 +748,21 @@ public class Window extends JPanel implements KeyListener, Runnable {
     public void keyPressed(KeyEvent e) {
         int key = e.getKeyCode();
 
+        // Controle da seleção de cartas
+        if (player.getCardManager().isActive()) {
+            if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) {
+                player.getCardManager().selectPrevious();
+            } else if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) {
+                player.getCardManager().selectNext();
+            } else if (key == KeyEvent.VK_ENTER) {
+                String selectedUpgrade = player.getCardManager().confirmSelection();
+                if (selectedUpgrade != null) {
+                    player.applySelectedUpgrade(selectedUpgrade);
+                }
+            }
+            return; // Não processa outros controles durante seleção de cartas
+        }
+
         // Controle da tela inicial
         if (startScreen && key == KeyEvent.VK_ENTER) {
             startScreen = false;
@@ -758,6 +785,11 @@ public class Window extends JPanel implements KeyListener, Runnable {
     @Override
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();
+
+        // Não processa movimento durante seleção de cartas
+        if (player.getCardManager().isActive()) {
+            return;
+        }
 
         if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W || key == KeyEvent.VK_NUMPAD8)
             this.player.setMoveUp(false);
