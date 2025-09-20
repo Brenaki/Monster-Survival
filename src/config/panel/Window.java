@@ -44,6 +44,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private double deltaTime;
     private long gameStartTime;
     private long gameDuration = 300000; // 5 minutos (300 segundos)
+    private long gameOverTime = 0; // Tempo quando o game over aconteceu
     
     // Sistema de pontuação
     private int score = 0;
@@ -51,10 +52,10 @@ public class Window extends JPanel implements KeyListener, Runnable {
     private int gemsCollected = 0;
     
     // Game over
-    private String gameOverText = "GAME OVER";
     private String messageGameOverText = "";
     private boolean gameOver = false;
     private boolean restart = false;
+    private boolean survived = false; // Indica se o player sobreviveu até o fim do tempo
     
     // Start screen
     private boolean startScreen = true;
@@ -73,7 +74,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
         // Inicia na tela de carregamento
         this.loadingScreen = true;
         
-        this.player = new Player(960, 540, 3, 8, 8, 100, true);
+        this.player = new Player(960, 540, 3, 8, 8, 10, true);
         this.enemies = new ArrayList<>();
         this.projectiles = new ArrayList<>();
         this.experienceGems = new ArrayList<>();
@@ -183,27 +184,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
         Font pixelFont = new Font("Courier New", Font.BOLD, 16);
         Font largeFont = new Font("Courier New", Font.BOLD, 24);
         g2d.setFont(pixelFont);
-        g2d.setColor(PixelArtRenderer.UI_TEXT);
         
-        // Tempo restante
-        long timeRemaining = gameDuration - (System.currentTimeMillis() - gameStartTime);
-        int secondsRemaining = (int) (timeRemaining / 1000);
-        g2d.drawString("TEMPO: " + secondsRemaining + "s", 20, 30);
-        
-        // Pontuação
-        g2d.setColor(PixelArtRenderer.UI_ACCENT);
-        g2d.drawString("SCORE: " + score, 20, 50);
-        
-        // Estatísticas
-        g2d.setColor(PixelArtRenderer.UI_TEXT);
-        g2d.drawString("INIMIGOS: " + enemies.size(), 20, 70);
-        g2d.drawString("GEMS: " + experienceGems.size(), 20, 90);
-        g2d.drawString("MORTOS: " + enemiesKilled, 20, 110);
-        g2d.drawString("COLETADOS: " + gemsCollected, 20, 130);
-
-        // Desenha instruções
-        drawInstructions(g2d);
-
         // Loading Screen
         if (loadingScreen) {
             drawLoadingScreen(g2d);
@@ -216,40 +197,54 @@ public class Window extends JPanel implements KeyListener, Runnable {
             return;
         }
 
-        // Game Over
+        // Durante o jogo, mostra apenas o SCORE
+        if (!gameOver) {
+            g2d.setColor(PixelArtRenderer.UI_ACCENT);
+            g2d.drawString("SCORE: " + score, 20, 30);
+            return;
+        }
+
+        // Game Over - Mostra resumo completo
         if (gameOver) {
             // Pinta a tela com efeito de fade
             g2d.setColor(new Color(0, 0, 0, 180));
             g2d.fillRect(0, 0, getWidth(), getHeight());
 
-            // Define fonte maior para o Game Over
+            // Define fonte maior para o título principal
             g2d.setFont(largeFont);
             
-            // Calcula o centro da tela para o texto "GAME OVER"
-            int gameOverWidth = g2d.getFontMetrics().stringWidth(this.gameOverText);
-            int gameOverX = (getWidth() - gameOverWidth) / 2;
+            // Determina o texto e cor baseado na condição de sobrevivência
+            String mainText;
+            Color mainColor;
+            if (survived) {
+                mainText = "VITÓRIA!";
+                mainColor = new Color(0, 255, 0); // Verde para vitória
+            } else {
+                mainText = "GAME OVER";
+                mainColor = Color.RED; // Vermelho para derrota
+            }
             
-            // Desenha o Game Over em Vermelho
-            g2d.setColor(Color.RED);
-            g2d.drawString(this.gameOverText, gameOverX, getHeight()/2);
+            // Calcula o centro da tela para o texto principal
+            int mainTextWidth = g2d.getFontMetrics().stringWidth(mainText);
+            int mainTextX = (getWidth() - mainTextWidth) / 2;
+            
+            // Desenha o texto principal
+            g2d.setColor(mainColor);
+            g2d.drawString(mainText, mainTextX, getHeight()/2 - 80);
 
-            // Define fonte menor para o texto
+            // Define fonte menor para o texto de mensagem
             g2d.setFont(pixelFont);
             
-            // Calcula o centro da tela para o texto de sobrevivência
+            // Calcula o centro da tela para o texto de mensagem
             int messageWidth = g2d.getFontMetrics().stringWidth(this.messageGameOverText);
             int messageX = (getWidth() - messageWidth) / 2;
             
-            // Desenha o texto
+            // Desenha o texto da mensagem
             g2d.setColor(PixelArtRenderer.UI_TEXT);
-            g2d.drawString(this.messageGameOverText, messageX, getHeight()/2 + 40);
+            g2d.drawString(this.messageGameOverText, messageX, getHeight()/2 - 40);
             
-            // Pontuação final
-            String finalScore = "PONTUAÇÃO FINAL: " + score;
-            int scoreWidth = g2d.getFontMetrics().stringWidth(finalScore);
-            int scoreX = (getWidth() - scoreWidth) / 2;
-            g2d.setColor(PixelArtRenderer.UI_ACCENT);
-            g2d.drawString(finalScore, scoreX, getHeight()/2 + 70);
+            // Resumo das estatísticas do jogo
+            drawGameOverSummary(g2d);
             
             // Define fonte menor para o texto de reiniciar
             Font restartFont = new Font("Courier New", Font.PLAIN, 14);
@@ -261,11 +256,69 @@ public class Window extends JPanel implements KeyListener, Runnable {
             int restartX = (getWidth() - restartWidth) / 2;
             
             g2d.setColor(PixelArtRenderer.UI_TEXT);
-            g2d.drawString(textRestart, restartX, getHeight()/2 + 100);
+            g2d.drawString(textRestart, restartX, getHeight()/2 + 120);
             if(this.restart) {
                this.restart(); 
             }
         }
+    }
+    
+    private void drawGameOverSummary(Graphics2D g2d) {
+        Font pixelFont = new Font("Courier New", Font.BOLD, 16);
+        g2d.setFont(pixelFont);
+        
+        // Calcula o tempo total de sobrevivência
+        long survivalTime;
+        if (survived) {
+            // Se sobreviveu, mostra o tempo total do jogo (5 minutos)
+            survivalTime = gameDuration;
+        } else {
+            // Se morreu, mostra quanto tempo sobreviveu
+            if (gameOverTime > 0) {
+                survivalTime = gameOverTime - gameStartTime;
+            } else {
+                survivalTime = System.currentTimeMillis() - gameStartTime;
+            }
+        }
+        int secondsSurvived = (int) (survivalTime / 1000);
+        
+        // Pontuação final
+        String finalScore = "PONTUAÇÃO FINAL: " + score;
+        int scoreWidth = g2d.getFontMetrics().stringWidth(finalScore);
+        int scoreX = (getWidth() - scoreWidth) / 2;
+        g2d.setColor(PixelArtRenderer.UI_ACCENT);
+        g2d.drawString(finalScore, scoreX, getHeight()/2);
+        
+        // Resumo das estatísticas
+        g2d.setColor(PixelArtRenderer.UI_TEXT);
+        
+        // Calcula posições para centralizar o resumo
+        int summaryStartY = getHeight()/2 + 30;
+        int lineHeight = 20;
+        
+        // Tempo de sobrevivência
+        String timeText = "TEMPO DE SOBREVIVÊNCIA: " + secondsSurvived + "s";
+        int timeWidth = g2d.getFontMetrics().stringWidth(timeText);
+        int timeX = (getWidth() - timeWidth) / 2;
+        g2d.drawString(timeText, timeX, summaryStartY);
+        
+        // Inimigos mortos
+        String enemiesText = "INIMIGOS MORTOS: " + enemiesKilled;
+        int enemiesWidth = g2d.getFontMetrics().stringWidth(enemiesText);
+        int enemiesX = (getWidth() - enemiesWidth) / 2;
+        g2d.drawString(enemiesText, enemiesX, summaryStartY + lineHeight);
+        
+        // Gems coletadas
+        String gemsText = "GEMS COLETADAS: " + gemsCollected;
+        int gemsWidth = g2d.getFontMetrics().stringWidth(gemsText);
+        int gemsX = (getWidth() - gemsWidth) / 2;
+        g2d.drawString(gemsText, gemsX, summaryStartY + lineHeight * 2);
+        
+        // Nível alcançado
+        String levelText = "NÍVEL ALCANÇADO: " + player.getLevel();
+        int levelWidth = g2d.getFontMetrics().stringWidth(levelText);
+        int levelX = (getWidth() - levelWidth) / 2;
+        g2d.drawString(levelText, levelX, summaryStartY + lineHeight * 3);
     }
     
     public void restart() {
@@ -277,6 +330,8 @@ public class Window extends JPanel implements KeyListener, Runnable {
         this.player.reset();
         this.gameOver = false;
         this.restart = false;
+        this.survived = false; // Reset da condição de sobrevivência
+        this.gameOverTime = 0; // Reset do tempo de game over
         this.loadingScreen = true; // Volta para a tela de carregamento
         this.startScreen = true; // Depois vai para a tela inicial
         // gameStartTime será definido quando o jogador pressionar ENTER
@@ -286,13 +341,6 @@ public class Window extends JPanel implements KeyListener, Runnable {
         this.enemiesKilled = 0;
         this.gemsCollected = 0;
         this.pulseTime = 0;
-    }
-
-    
-    private void drawInstructions(Graphics2D g2d) {
-        g2d.setColor(PixelArtRenderer.UI_TEXT);
-        g2d.drawString("WASD ou Setas para mover", 20, getHeight() - 40);
-        g2d.drawString("Sobreviva até o amanhecer!", 20, getHeight() - 20);
     }
     
     private void drawStartScreen(Graphics2D g2d) {
@@ -418,13 +466,15 @@ public class Window extends JPanel implements KeyListener, Runnable {
         g2d.setColor(PixelArtRenderer.UI_ACCENT);
         g2d.fillRoundRect(barX + 2, barY + 2, progressWidth, barHeight - 4, 3, 3);
     }
-
-    private void gameOver(String why){
+    
+    private void gameOver(String why, boolean survived){
         if (this.gameOver) {
             return; // Já está em game over
         }
         this.gameOver = true;
+        this.survived = survived;
         this.messageGameOverText = why;
+        this.gameOverTime = System.currentTimeMillis(); // Captura o tempo do game over
     }
 
     private void update() {
@@ -461,7 +511,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
         
         // Verifica se o tempo acabou (corrige bug do tempo não parar)
         if (System.currentTimeMillis() - gameStartTime >= gameDuration) {
-            this.gameOver("Sobreviveu até o amanhecer!");
+            this.gameOver("Sobreviveu até o amanhecer!", true);
             return;
         }
 		// Atualiza direção de olhar conforme entrada atual
@@ -484,7 +534,7 @@ public class Window extends JPanel implements KeyListener, Runnable {
 
         // Game over, se o player morrer
         if(this.player.isAlive() == false) {
-            this.gameOver("Você morreu!");
+            this.gameOver("Você morreu!", false);
         }
         
 		// Atualiza posição das armas
@@ -604,6 +654,16 @@ public class Window extends JPanel implements KeyListener, Runnable {
 		int xpValue = 10 + (player.getLevel() * 2);
 		ExperienceGem gem = new ExperienceGem(x, y, xpValue);
 		experienceGems.add(gem);
+		
+		// Chance de 1% (0.01) de dropar uma segunda gema
+		if (Math.random() < 0.01) {
+			// Spawna uma segunda gema em uma posição ligeiramente diferente
+			double offsetX = x + (Math.random() - 0.5) * 20; // Offset de até 10 pixels
+			double offsetY = y + (Math.random() - 0.5) * 20;
+			ExperienceGem secondGem = new ExperienceGem(offsetX, offsetY, xpValue);
+			experienceGems.add(secondGem);
+			System.out.println("Drop duplo de gemas! Duas gemas spawnadas.");
+		}
 	}
 	
 	private void updateDifficulty() {
@@ -758,6 +818,11 @@ public class Window extends JPanel implements KeyListener, Runnable {
                 String selectedUpgrade = player.getCardManager().confirmSelection();
                 if (selectedUpgrade != null) {
                     player.applySelectedUpgrade(selectedUpgrade);
+                    // Reseta todos os controles de movimento para evitar bugs
+                    player.setMoveUp(false);
+                    player.setMoveDown(false);
+                    player.setMoveLeft(false);
+                    player.setMoveRight(false);
                 }
             }
             return; // Não processa outros controles durante seleção de cartas

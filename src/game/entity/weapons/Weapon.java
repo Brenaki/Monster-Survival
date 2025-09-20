@@ -83,4 +83,6 @@ public abstract class Weapon implements Shooter {
 
     // -- Setters --
     public void setOwner(Shooter owner) { this.owner = owner; }
+    public void setDamage(int damage) { this.damage = damage; }
+    public void setAttackSpeed(float attackSpeed) { this.attackSpeed = attackSpeed; }
 }

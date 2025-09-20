@@ -90,19 +90,19 @@ public class UpgradeCardManager {
                 cardColor = DAMAGE_COLOR;
                 break;
             case "Basic Gun":
-                description = "Adiciona uma pistola básica ao arsenal";
+                description = "Adiciona pistola básica ou aumenta seu nível";
                 cardColor = WEAPON_COLOR;
                 break;
             case "Magic Wand":
-                description = "Adiciona uma varinha mágica que lança bolas de fogo";
+                description = "Adiciona varinha mágica ou aumenta seu nível";
                 cardColor = WEAPON_COLOR;
                 break;
             case "Energy Sword":
-                description = "Adiciona uma espada de energia para combate corpo a corpo";
+                description = "Adiciona espada de energia ou aumenta seu nível";
                 cardColor = WEAPON_COLOR;
                 break;
             case "Grenade Launcher":
-                description = "Adiciona um lançador de granadas explosivas";
+                description = "Adiciona lançador de granadas ou aumenta seu nível";
                 cardColor = WEAPON_COLOR;
                 break;
             default:
